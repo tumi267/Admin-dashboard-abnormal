@@ -1,0 +1,54 @@
+{
+      "salesSummary": {
+        "today": {
+          "totalSales": 1250.50,
+          "currency": "ZAR"
+        },
+        "thisWeek": {
+          "totalSales": 8450.00,
+          "currency": "ZAR"
+        },
+        "thisMonth": {
+          "totalSales": 35200.75,
+          "currency": "ZAR"
+        }
+      },
+      "numberOfOrders": {
+        "today": 15,
+        "thisWeek": 95,
+        "thisMonth": 380
+      },
+      "topSellingProducts": [
+        {
+          "name": "Swiss Chard Bunch",
+          "unitsSold": 120,
+          "revenue": 1200.00
+        },
+        {
+          "name": "Tomato Pack (1kg)",
+          "unitsSold": 90,
+          "revenue": 1350.00
+        },
+        {
+          "name": "Sweet Pepper (500g)",
+          "unitsSold": 75,
+          "revenue": 1125.00
+        }
+      ],
+      "newCustomers": {
+        "today": 3,
+        "thisWeek": 18,
+        "thisMonth": 60
+      },
+      "lowStockWarnings": [
+        {
+          "product": "Tomato Pack (1kg)",
+          "stockRemaining": 12
+        },
+        {
+          "product": "Sweet Pepper (500g)",
+          "stockRemaining": 8
+        }
+      ]
+  }
+  

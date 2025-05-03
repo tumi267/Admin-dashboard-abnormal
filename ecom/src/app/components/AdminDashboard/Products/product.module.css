@@ -1,0 +1,17 @@
+.editModule{
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-color: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+    z-index: 1000;
+    padding-top:5em ;
+    padding-bottom:5em ;
+    width: 100%;
+}
+.moduleform{
+    width: 70%;
+    height: 90%;
+    margin: auto;
+    border: 1px solid;
+}
