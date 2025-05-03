@@ -1,0 +1,46 @@
+# virtual environments
+
+.env
+.env/
+env/
+
+.ecom-env
+.ecom-env/
+
+.env
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+/*env*/
+/*venv*/
+**/pyvenv.cfg
+
+/*ecom-env*/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Django
+*.log
+*.pot
+*.pyc
+*.sqlite3
+db.sqlite3
+*.db
+*.mo
+
+# Django migrations
+**/migrations/
+!**/migrations/__init__.py
