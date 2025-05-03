@@ -155,3 +155,16 @@ Password reset management
 2FA (optional)
 
 13.courier intergration 
+
+
+
+
+clean up category management
+
+
+more customer logic to api
+
+context
+front end data from api
+images 
+marketing db and analitics db
