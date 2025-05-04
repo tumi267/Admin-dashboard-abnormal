@@ -35,7 +35,8 @@ get_user_token() {
     if [ -f "$token_file" ]; then
         cat "$token_file"
     else
-        echo ""
+        print_message "$RED" "No token found for user $username. Please login first."
+        return 1
     fi
 }
 
@@ -46,27 +47,33 @@ store_user_token() {
     local token_file="${TOKENS_DIR}/${username}"
     
     echo "$token" > "$token_file"
-    print_message "$GREEN" "Token stored successfully for user: $username"
+    print_message "$GREEN" "Token stored for user: $username"
 }
 
-# Function to display JSON in a pretty format
+# Function to display JSON in a pretty format using jq
 pretty_print_json() {
-    echo "$1" | python -m json.tool
+    if command -v jq &> /dev/null; then
+        echo "$1" | jq .
+    else
+        # Fallback if jq is not installed
+        echo "$1"
+        print_message "$YELLOW" "Install jq for prettier output (apt-get install jq or brew install jq)"
+    fi
 }
 
-# Function to handle API responses
+# Function to handle API responses - pass through API messages
 handle_response() {
     local response=$1
     local http_code=$2
     
     print_message "$BLUE" "HTTP Status Code: $http_code"
     
+    # For successful requests, just pretty print
     if [[ "$http_code" -ge 200 && "$http_code" -lt 300 ]]; then
-        print_message "$GREEN" "Request was successful!"
         pretty_print_json "$response"
         return 0
     else
-        print_message "$RED" "Request failed!"
+        # For errors, pretty print the error message from API
         pretty_print_json "$response"
         return 1
     fi
@@ -132,7 +139,7 @@ EOF
         CURRENT_USER="$username"
         # If there's a token in the response, extract and store it
         if echo "$body" | grep -q "token"; then
-            local token=$(echo "$body" | python -c "import sys, json; print(json.load(sys.stdin).get('token', ''))")
+            local token=$(echo "$body" | grep -o '"token":"[^"]*' | sed 's/"token":"//')
             if [ -n "$token" ]; then
                 store_user_token "$username" "$token"
             fi
@@ -176,14 +183,12 @@ EOF
     
     # Handle the response
     if handle_response "$body" "$http_code"; then
-        # Store current username and token for future operations
+        # Store current username
         CURRENT_USER="$username"
         # Extract token from response
-        local token=$(echo "$body" | python -c "import sys, json; print(json.load(sys.stdin).get('token', ''))")
+        local token=$(echo "$body" | grep -o '"token":"[^"]*' | sed 's/"token":"//')
         if [ -n "$token" ]; then
             store_user_token "$username" "$token"
-        else
-            print_message "$RED" "No token found in response!"
         fi
     fi
 }
@@ -203,11 +208,7 @@ logout_user() {
     fi
     
     # Get token
-    local token=$(get_user_token "$username")
-    if [ -z "$token" ]; then
-        print_message "$RED" "No token found for user $username. Please login first."
-        return
-    fi
+    local token=$(get_user_token "$username") || return
     
     print_message "$YELLOW" "Sending logout request..."
     
@@ -224,7 +225,7 @@ logout_user() {
         # Clear current user and remove token file
         rm -f "${TOKENS_DIR}/${username}"
         CURRENT_USER=""
-        print_message "$GREEN" "Logged out successfully and token removed."
+        print_message "$GREEN" "Token removed for user: $username"
     fi
 }
 
@@ -243,11 +244,7 @@ access_protected_endpoint() {
     fi
     
     # Get token
-    local token=$(get_user_token "$username")
-    if [ -z "$token" ]; then
-        print_message "$RED" "No token found for user $username. Please login first."
-        return
-    fi
+    local token=$(get_user_token "$username") || return
     
     print_message "$YELLOW" "Accessing protected endpoint..."
     
@@ -348,11 +345,7 @@ request_email_change() {
     fi
     
     # Get token
-    local token=$(get_user_token "$username")
-    if [ -z "$token" ]; then
-        print_message "$RED" "No token found for user $username. Please login first."
-        return
-    fi
+    local token=$(get_user_token "$username") || return
     
     # Gather user input
     read -p "Enter new email: " new_email
@@ -398,11 +391,7 @@ confirm_email_change() {
     fi
     
     # Get token
-    local token=$(get_user_token "$username")
-    if [ -z "$token" ]; then
-        print_message "$RED" "No token found for user $username. Please login first."
-        return
-    fi
+    local token=$(get_user_token "$username") || return
     
     # Gather user input
     read -p "Enter verification token (from email): " verification_token
@@ -438,11 +427,7 @@ create_product() {
     fi
     
     # Get token
-    local token=$(get_user_token "$username")
-    if [ -z "$token" ]; then
-        print_message "$RED" "No token found for user $username. Please login first."
-        return
-    fi
+    local token=$(get_user_token "$username") || return
     
     # Gather user input
     read -p "Enter product name: " name
@@ -500,11 +485,7 @@ list_products() {
     fi
     
     # Get token
-    local token=$(get_user_token "$username")
-    if [ -z "$token" ]; then
-        print_message "$RED" "No token found for user $username. Please login first."
-        return
-    fi
+    local token=$(get_user_token "$username") || return
     
     print_message "$YELLOW" "Fetching products..."
     
@@ -535,11 +516,7 @@ update_product() {
     fi
     
     # Get token
-    local token=$(get_user_token "$username")
-    if [ -z "$token" ]; then
-        print_message "$RED" "No token found for user $username. Please login first."
-        return
-    fi
+    local token=$(get_user_token "$username") || return
     
     # Gather user input
     read -p "Enter product ID to update: " product_id
@@ -558,19 +535,21 @@ update_product() {
     
     print_message "$YELLOW" "Updating product..."
     
-    # Build the curl command with conditionally added fields
-    local curl_cmd="curl -s -w \"\n%{http_code}\" -X PATCH \"$BASE_URL/products/$product_id/\" -H \"Authorization: Token $token\""
+    # Build the curl command
+    local curl_args=()
     
     if [ -n "$description" ]; then
-        curl_cmd="$curl_cmd -F \"description=$description\""
+        curl_args+=(-F "description=$description")
     fi
     
     if [ -n "$price" ]; then
-        curl_cmd="$curl_cmd -F \"price=$price\""
+        curl_args+=(-F "price=$price")
     fi
     
-    # Execute the curl command
-    local response=$(eval $curl_cmd)
+    # Make API call
+    local response=$(curl -s -w "\n%{http_code}" -X PATCH "$BASE_URL/products/$product_id/" \
+        -H "Authorization: Token $token" \
+        "${curl_args[@]}")
     
     # Extract HTTP status code and response body
     local http_code=$(echo "$response" | tail -n1)
@@ -595,11 +574,7 @@ delete_product() {
     fi
     
     # Get token
-    local token=$(get_user_token "$username")
-    if [ -z "$token" ]; then
-        print_message "$RED" "No token found for user $username. Please login first."
-        return
-    fi
+    local token=$(get_user_token "$username") || return
     
     # Gather user input
     read -p "Enter product ID to delete: " product_id
@@ -669,11 +644,11 @@ show_menu() {
 # Main program loop
 while true; do
     show_menu
-    read -p "Enter your choice (0-12): " choice
+    read -p "Enter your choice (0-12) or 'exit': " choice
     
     case $choice in
         0)
-            print_message "$GREEN" "Thank you for using the API testing script. Goodbye!"
+            print_message "$GREEN" "Exiting script. Goodbye!"
             exit 0
             ;;
         1)
@@ -713,7 +688,7 @@ while true; do
             delete_product
             ;;
         "exit")
-            print_message "$GREEN" "Thank you for using the API testing script. Goodbye!"
+            print_message "$GREEN" "Exiting script. Goodbye!"
             exit 0
             ;;
         *)
