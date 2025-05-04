@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import Nav from './components/Nav/Nav'
+import { GlobalContextProvider } from './context/store'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -18,9 +19,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <Nav/>
-        {children}
-        
+      <GlobalContextProvider>
+          <Nav />
+          {children}
+        </GlobalContextProvider>
         </body>
     </html>
   )

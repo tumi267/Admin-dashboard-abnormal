@@ -9,13 +9,22 @@ import { cn } from "@/lib/utils"
 import NavSearch from "./NavSearch/NavSearch"
 import { useEffect, useState } from "react"
 import NavCartModule from "./NavCartModule/NavCartModule"
+import { useGlobalContext } from "@/app/context/store"
 
 export default function Navbar() {
   const [carthover, setCartHover] = useState(false);
   const [prevScrollPos, setPrevScrollPos] = useState(0);
   const [visible, setVisible] = useState(true);
+  const [totalQty,setTotalQty]=useState(0)
+  // 🛒 Get cart data from context
+  const { data } = useGlobalContext()
 
-  const cartCount = 2;
+  
+  useEffect(()=>{
+    let total = data.reduce((sum, item) => sum + item.qty, 0)
+    setTotalQty(total)
+  },[data])
+  const cartCount = totalQty;
   const categories = [
     'fruit', 'veg', 'meat', 'dairy', 'bakery', 'seafood',
     'beverages', 'snacks', 'grains', 'spices', 'frozen foods',

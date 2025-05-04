@@ -32,11 +32,11 @@ function ProductGrid({ products }: ProductGridProps) {
           <Card>
             <CardHeader className="relative h-[368px]">
             {/* Uncomment when image setup is ready */}
-            {/* <Image
-              src={product.image}
+            <Image
+              src={'/phone.png'}
               alt={product.title}
               fill
-            /> */}
+            />
             <CardTitle>{product.title}</CardTitle>
           </CardHeader>
 

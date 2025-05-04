@@ -4,8 +4,11 @@ import React, { useEffect, useState } from 'react'
 import { fetchProducts, listenToProductChanges } from '@/lib/db/product'
 import { fetchCategories } from '@/lib/db/category'
 import { Edit, Delete } from '@mui/icons-material'
-import { IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material'
+import { IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Dialog, DialogContent, DialogActions, DialogTitle } from '@mui/material'
 import styles from './product.module.css'
+import { Button } from '@/components/ui/button'
+import ProductImageLib from './ProductImageLib'
+
 interface Variant {
   name: string
   sku: string
@@ -15,7 +18,7 @@ interface Variant {
 }
 
 type Product = {
-  id:string
+  id: string
   title: string
   description: string
   price: string
@@ -25,6 +28,7 @@ type Product = {
   onSale: boolean
   variants: Variant[]
 }
+
 interface ProductFormData {
   title: string
   description: string
@@ -37,7 +41,7 @@ interface ProductFormData {
 
 function ProductList() {
   const [products, setProducts] = useState<Product[]>([])
-  const [openEdit,setOpenEdit] = useState(false)
+  const [openEdit, setOpenEdit] = useState(false)
   const [categories, setCategories] = useState<string[]>([])
   const [formData, setFormData] = useState<ProductFormData>({
     title: '',
@@ -87,7 +91,7 @@ function ProductList() {
     setVariants(updated)
   }
 
-  const handleEdit=async(product: Product)=>{
+  const handleEdit = async (product: Product) => {
     const catList = await fetchCategories()
     setCategories(catList)
     setFormData({
@@ -103,37 +107,38 @@ function ProductList() {
     setOpenEdit(true)
   }
 
-  const handleDelete=async(e)=>{
-    let productTodelete=e
+  const handleDelete = async (e) => {
+    let productToDelete = e
     const res = await fetch(`/api/deletProd`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(productTodelete),
-        cache: 'no-store',
-      })
-  
-      const data = await res.json()
-      alert(data.msg)
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(productToDelete),
+      cache: 'no-store',
+    })
+
+    const data = await res.json()
+    alert(data.msg)
   }
+
   const addVariant = () => {
     setVariants(prev => [...prev, { name: '', sku: '', price: '', inventory: '', onSale: false }])
   }
-  
+
   const editItem = async (e: React.FormEvent) => {
     e.preventDefault()
-  
+
     // Combine form data and variants into a single object
     const updatedProduct = {
       ...formData,
       variants,
       id: products.find((p) => p.sku === formData.sku)?.id // assuming sku is unique
     }
-  
+
     if (!updatedProduct.id) {
       alert("Product ID not found. Cannot update.")
       return
     }
-  
+
     try {
       const res = await fetch('/api/editProd', {
         method: 'POST',
@@ -141,9 +146,9 @@ function ProductList() {
         body: JSON.stringify(updatedProduct),
         cache: 'no-store',
       })
-  
+
       const data = await res.json()
-  
+
       if (res.ok) {
         alert('Product updated successfully')
         setOpenEdit(false)
@@ -155,7 +160,7 @@ function ProductList() {
       alert('An unexpected error occurred while updating the product.')
     }
   }
-  
+
   return (
     <div>
       <h1 className="text-xl font-bold mb-4">Products</h1>
@@ -182,12 +187,10 @@ function ProductList() {
                 <TableCell>{product.variants.length}</TableCell>
                 <TableCell>{calculateTotalInventory(product.variants)}</TableCell>
                 <TableCell>
-                  {/* Edit Icon */}
                   <IconButton onClick={() => handleEdit(product)} color="primary">
                     <Edit />
                   </IconButton>
-                  {/* Delete Icon */}
-                  <IconButton onClick={()=>{handleDelete(product.id)}} color="secondary">
+                  <IconButton onClick={() => handleDelete(product.id)} color="secondary">
                     <Delete />
                   </IconButton>
                 </TableCell>
@@ -196,160 +199,162 @@ function ProductList() {
           </TableBody>
         </Table>
       </TableContainer>
-      {openEdit&&<div className={styles.editModule}>
-        <div className={styles.moduleform}>
-          <button onClick={()=>{setOpenEdit(false)}}>close</button>
-        <form onSubmit={editItem} className="mt-6 space-y-4 bg-white p-6 rounded shadow-md">
-          <div>
-            <label className="block font-semibold">Title</label>
-            <input
-              type="text"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              className="w-full border p-2 rounded mt-1"
-              required
-            />
-          </div>
 
-          <div>
-            <label className="block font-semibold">Description</label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              className="w-full border p-2 rounded mt-1"
-              required
-            />
-          </div>
+      <Dialog open={openEdit} onClose={() => setOpenEdit(false)} maxWidth="l" fullWidth>
+        <DialogTitle>Edit Product</DialogTitle>
+        <DialogContent dividers>
+          <form onSubmit={editItem} className="space-y-4">
+            <div>
+              <label className="block font-semibold">Title</label>
+              <input
+                type="text"
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+                className="w-full border p-2 rounded mt-1"
+                required
+              />
+            </div>
+            <label className="block font-semibold">Image</label>
+            <div>
+              <ProductImageLib
+                imageSetter={setFormData}
+              />
+            </div>
+            <div>
+              <label className="block font-semibold">Description</label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                className="w-full border p-2 rounded mt-1"
+                required
+              />
+            </div>
 
-          <div>
-            <label className="block font-semibold">Price</label>
-            <input
-              type="number"
-              name="price"
-              value={formData.price}
-              onChange={handleChange}
-              className="w-full border p-2 rounded mt-1"
-              required
-            />
-          </div>
+            <div>
+              <label className="block font-semibold">Price</label>
+              <input
+                type="number"
+                name="price"
+                value={formData.price}
+                onChange={handleChange}
+                className="w-full border p-2 rounded mt-1"
+                required
+              />
+            </div>
 
-          <div>
-            <label className="block font-semibold">SKU</label>
-            <input
-              type="text"
-              name="sku"
-              value={formData.sku}
-              onChange={handleChange}
-              className="w-full border p-2 rounded mt-1"
-              required
-            />
-          </div>
+            <div>
+              <label className="block font-semibold">SKU</label>
+              <input
+                type="text"
+                name="sku"
+                value={formData.sku}
+                onChange={handleChange}
+                className="w-full border p-2 rounded mt-1"
+                required
+              />
+            </div>
 
-          <div>
-            <label className="block font-semibold">Category</label>
-            <select
-              name="category"
-              value={formData.category}
-              onChange={handleChange}
-              className="w-full border p-2 rounded mt-1"
-              required
-            >
-              <option value="">Select a category</option>
-              {categories.map((cat, idx) => (
-                <option key={idx} value={cat}>
-                  {cat}
-                </option>
+            <div>
+              <label className="block font-semibold">Category</label>
+              <select
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                className="w-full border p-2 rounded mt-1"
+                required
+              >
+                <option value="">Select a category</option>
+                {categories.map((cat, idx) => (
+                  <option key={idx} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-semibold">Status</label>
+              <select
+                name="status"
+                value={formData.status}
+                onChange={handleChange}
+                className="w-full border p-2 rounded mt-1"
+                required
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-semibold">Sale/Promotion</label>
+              <input
+                type="checkbox"
+                name="onSale"
+                checked={formData.onSale}
+                onChange={(e) => setFormData(prev => ({ ...prev, onSale: e.target.checked }))}
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <h3>Variants</h3>
+              {variants.map((variant, idx) => (
+                <div key={idx} className="space-y-2">
+                  <input
+                    type="text"
+                    placeholder="Variant Name"
+                    value={variant.name}
+                    onChange={(e) => handleVariantChange(idx, 'name', e.target.value)}
+                    className="w-full border p-2 rounded mt-1"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Variant SKU"
+                    value={variant.sku}
+                    onChange={(e) => handleVariantChange(idx, 'sku', e.target.value)}
+                    className="w-full border p-2 rounded mt-1"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Price"
+                    value={variant.price}
+                    onChange={(e) => handleVariantChange(idx, 'price', e.target.value)}
+                    className="w-full border p-2 rounded mt-1"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Inventory"
+                    value={variant.inventory}
+                    onChange={(e) => handleVariantChange(idx, 'inventory', e.target.value)}
+                    className="w-full border p-2 rounded mt-1"
+                  />
+                  <input
+                    type="checkbox"
+                    checked={variant.onSale}
+                    onChange={(e) => handleVariantChange(idx, 'onSale', e.target.checked)}
+                    className="mt-1"
+                  />
+                  {variants.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setVariants(variants.filter((_, index) => index !== idx))}
+                      className="text-red-500"
+                    >
+                      Delete Variant
+                    </button>
+                  )}
+                </div>
               ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block font-semibold">Status</label>
-            <select
-              name="status"
-              value={formData.status}
-              onChange={handleChange}
-              className="w-full border p-2 rounded mt-1"
-              required
-            >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block font-semibold">Sale/Promotion</label>
-            <input
-              type="checkbox"
-              name="onSale"
-              checked={formData.onSale}
-              onChange={(e) => setFormData(prev => ({ ...prev, onSale: e.target.checked }))}
-              className="mr-2"
-            />
-            <span>On Sale/Promotion</span>
-          </div>
-
-          <div>
-            <h3 className="font-bold text-lg mb-2">Variants</h3>
-            {variants.map((variant, idx) => (
-              <div key={idx} className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  placeholder="Variant Name"
-                  value={variant.name}
-                  onChange={e => handleVariantChange(idx, 'name', e.target.value)}
-                  className="flex-1 border p-2 rounded"
-                />
-                <input
-                  type="text"
-                  placeholder="SKU"
-                  value={variant.sku}
-                  onChange={e => handleVariantChange(idx, 'sku', e.target.value)}
-                  className="flex-1 border p-2 rounded"
-                />
-                <input
-                  type="number"
-                  placeholder="Price"
-                  value={variant.price}
-                  onChange={e => handleVariantChange(idx, 'price', e.target.value)}
-                  className="flex-1 border p-2 rounded"
-                />
-                <input
-                  type="number"
-                  placeholder="Inventory"
-                  value={variant.inventory}
-                  onChange={e => handleVariantChange(idx, 'inventory', e.target.value)}
-                  className="flex-1 border p-2 rounded"
-                />
-                <input
-                  type="checkbox"
-                  checked={variant.onSale}
-                  onChange={(e) => handleVariantChange(idx, 'onSale', e.target.checked ? true : false)}
-                  className="mr-2"
-                />
-                <span>On Sale</span>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={addVariant}
-              className="text-sm text-blue-600 hover:underline"
-            >
-              + Add Variant
-            </button>
-          </div>
-
-          <button
-            type="submit"
-            className="mt-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-          >
-            Submit Product
-          </button>
-        </form>
-        </div>
-      </div>}
+              <Button onClick={addVariant}>Add Variant</Button>
+            </div>
+          </form>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenEdit(false)} variant="outlined">Cancel</Button>
+          <Button type="submit" onClick={editItem}>Save</Button>
+        </DialogActions>
+      </Dialog>
     </div>
   )
 }

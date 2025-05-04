@@ -13,26 +13,6 @@ function AdminDashboard({productsList}) {
  
   const renderContent = () => {
     switch (activeTab) {
-    //   case 'dashboard':
-    //     return (
-    //       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    //         <div className="bg-white p-6 rounded-lg shadow">
-    //           <Category />
-    //         </div>
-    //         <div className="bg-white p-6 rounded-lg shadow">
-    //           <Ordersmanagement />
-    //         </div>
-    //         <div className="bg-white p-6 rounded-lg shadow">
-    //           <CustomerMamagent />
-    //         </div>
-    //         <div className="bg-white p-6 rounded-lg shadow">
-    //           <MarketingPromotions />
-    //         </div>
-    //         <div className="bg-white p-6 rounded-lg shadow">
-    //           <AnalyticsReports />
-    //         </div>
-    //       </div>
-    //     );
       case 'products':
         return <div className="bg-white p-6 rounded-lg shadow">{productsList}</div>;
       case 'categories':

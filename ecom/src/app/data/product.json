@@ -1,31 +1,60 @@
 [
-    {
-      "id": "prod001",
-      "title": "Wireless Headphones",
-      "price": 99.99,
-      "description": "High-quality wireless headphones with noise cancellation.",
-      "image": "https://example.com/images/headphones.jpg"
-    },
-    {
-      "id": "prod002",
-      "title": "Smart Watch",
-      "price": 199.99,
-      "description": "Stylish smartwatch with health tracking features.",
-      "image": "https://example.com/images/smartwatch.jpg"
-    },
-    {
-      "id": "prod003",
-      "title": "Gaming Mouse",
-      "price": 49.99,
-      "description": "Ergonomic gaming mouse with customizable buttons.",
-      "image": "https://example.com/images/mouse.jpg"
-    },
-    {
-      "id": "prod004",
-      "title": "Bluetooth Speaker",
-      "price": 79.99,
-      "description": "Portable Bluetooth speaker with deep bass and waterproof design.",
-      "image": "https://example.com/images/speaker.jpg"
-    }
-  ]
-  
+  {
+    "id": "prod001",
+    "title": "Wireless Headphones",
+    "price": 99.99,
+    "description": "High-quality wireless headphones with noise cancellation.",
+    "image": "https://example.com/images/headphones.jpg",
+    "category": "Audio",
+    "sku": "WH-001",
+    "onSale": true,
+    "variants": [
+      { "id": "prod001-blk", "option": "Black", "price": 99.99 },
+      { "id": "prod001-wht", "option": "White", "price": 99.99 },
+      { "id": "prod001-blu", "option": "Blue", "price": 104.99 }
+    ]
+  },
+  {
+    "id": "prod002",
+    "title": "Smart Watch",
+    "price": 199.99,
+    "description": "Stylish smartwatch with health tracking features.",
+    "image": "https://example.com/images/smartwatch.jpg",
+    "category": "Wearables",
+    "sku": "SW-002",
+    "onSale": false,
+    "variants": [
+      { "id": "prod002-38mm", "option": "38mm", "price": 199.99 },
+      { "id": "prod002-42mm", "option": "42mm", "price": 219.99 }
+    ]
+  },
+  {
+    "id": "prod003",
+    "title": "Gaming Mouse",
+    "price": 49.99,
+    "description": "Ergonomic gaming mouse with customizable buttons.",
+    "image": "https://example.com/images/mouse.jpg",
+    "category": "Accessories",
+    "sku": "GM-003",
+    "onSale": true,
+    "variants": [
+      { "id": "prod003-rgb", "option": "RGB", "price": 54.99 },
+      { "id": "prod003-black", "option": "Matte Black", "price": 49.99 }
+    ]
+  },
+  {
+    "id": "prod004",
+    "title": "Bluetooth Speaker",
+    "price": 79.99,
+    "description": "Portable Bluetooth speaker with deep bass and waterproof design.",
+    "image": "https://example.com/images/speaker.jpg",
+    "category": "Audio",
+    "sku": "BS-004",
+    "onSale": false,
+    "variants": [
+      { "id": "prod004-mini", "option": "Mini", "price": 59.99 },
+      { "id": "prod004-standard", "option": "Standard", "price": 79.99 },
+      { "id": "prod004-xl", "option": "XL", "price": 99.99 }
+    ]
+  }
+]

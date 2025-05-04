@@ -10,7 +10,7 @@ export default function Home() {
       <Hero
       msg='mesage'
       title='title'
-      prodid='id123456asjdb'
+      product={productData[0]}
       />
       <div className='pt-[96px] pb-[96px]'>
       <h2 className='ml-[2em] font-semibold font-sans text-xl'>Latest Products</h2>

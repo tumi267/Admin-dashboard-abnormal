@@ -1,18 +1,24 @@
 'use client'
-import React, { useState } from 'react';
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Dialog, DialogTitle, DialogContent, TextField, Grid, Switch } from '@mui/material';
+
+import React, { useEffect, useState } from 'react'
+import {
+  Table, TableBody, TableCell, TableContainer, TableHead,
+  TableRow, Paper, Button, Dialog, DialogTitle, DialogContent,
+  TextField, Grid, Switch
+} from '@mui/material'
+
+// Firebase functions
+import {
+  getPromotions,
+  deletePromotion,
+  setPromotion
+} from '../../../../lib/db/marketing'
+
+import { fetchProducts } from '../../../../lib/db/product'
 
 const MarketingPromotions = () => {
-  const [promotions, setPromotions] = useState([
-    { id: 1, name: 'Summer Sale', discount: 20, startDate: '2025-06-01', endDate: '2025-06-30', active: true, products: [1, 2] }, // product ids associated with the promotion
-    { id: 2, name: 'Black Friday', discount: 50, startDate: '2025-11-24', endDate: '2025-11-27', active: false, products: [3] }
-  ]);
-  
-  const [products, setProducts] = useState([
-    { id: 1, name: 'Product A', tags: ['promotion1'] },
-    { id: 2, name: 'Product B', tags: ['promotion1'] },
-    { id: 3, name: 'Product C', tags: [] }
-  ]);
+  const [promotions, setPromotions] = useState([])
+  const [products, setProducts] = useState([])
 
   const [newPromotion, setNewPromotion] = useState({
     name: '',
@@ -20,67 +26,98 @@ const MarketingPromotions = () => {
     startDate: '',
     endDate: '',
     active: false,
-    products: [] // List of product IDs linked to this promotion
-  });
-  
-  const [openDialog, setOpenDialog] = useState(false);
+    products: []
+  })
 
-  const handleDialogOpen = () => setOpenDialog(true);
-  const handleDialogClose = () => setOpenDialog(false);
+  const [openDialog, setOpenDialog] = useState(false)
+  const [editingPromotionId, setEditingPromotionId] = useState(null)
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewPromotion({ ...newPromotion, [name]: value });
-  };
+  useEffect(() => {
+    const loadData = async () => {
+      const [fetchedPromotions, fetchedProducts] = await Promise.all([
+        getPromotions(),
+        fetchProducts()
+      ])
+      setPromotions(fetchedPromotions)
+      setProducts(fetchedProducts)
+    }
+    loadData()
+  }, [])
 
-  const handleSavePromotion = () => {
-    const updatedPromotions = [...promotions, { ...newPromotion, id: Date.now() }];
-    setPromotions(updatedPromotions);
+  const handleDialogOpen = (promotion = null) => {
+    if (promotion) {
+      setNewPromotion(promotion)
+      setEditingPromotionId(promotion.id)
+    }
+    setOpenDialog(true)
+  }
 
-    // Link products to promotion by updating the product tags
-    const updatedProducts = products.map((product) => {
-      if (newPromotion.products.includes(product.id)) {
-        return { ...product, tags: [...product.tags, `promotion${newPromotion.id}`] };
-      }
-      return product;
-    });
-    setProducts(updatedProducts);
-
+  const handleDialogClose = () => {
     setNewPromotion({
       name: '',
       discount: '',
       startDate: '',
       endDate: '',
       active: false,
-      products: [],
-    });
+      products: []
+    })
+    setEditingPromotionId(null)
+    setOpenDialog(false)
+  }
 
-    handleDialogClose();
-  };
+  const handleInputChange = (e) => {
+    const { name, value } = e.target
+    setNewPromotion((prev) => ({ ...prev, [name]: value }))
+  }
 
-  const handleToggleActive = (id) => {
-    const updatedPromotions = promotions.map((promo) =>
-      promo.id === id ? { ...promo, active: !promo.active } : promo
-    );
-    setPromotions(updatedPromotions);
-  };
+  const handleSavePromotion = async () => {
+    const id = editingPromotionId || Date.now().toString()
+    const saved = await setPromotion(id, newPromotion)
+
+    if (editingPromotionId) {
+      setPromotions((prev) =>
+        prev.map((promo) => (promo.id === id ? saved : promo))
+      )
+    } else {
+      setPromotions((prev) => [...prev, saved])
+    }
+
+    handleDialogClose()
+  }
+
+  const handleToggleActive = async (id) => {
+    const promo = promotions.find((p) => p.id === id)
+    if (!promo) return
+
+    const updated = { ...promo, active: !promo.active }
+    await setPromotion(id, updated)
+
+    setPromotions((prev) =>
+      prev.map((p) => (p.id === id ? updated : p))
+    )
+  }
+
+  const handleDeletePromotion = async (id) => {
+    await deletePromotion(id)
+    setPromotions((prev) => prev.filter((p) => p.id !== id))
+  }
 
   const handleProductSelection = (productId) => {
     setNewPromotion((prev) => ({
       ...prev,
       products: prev.products.includes(productId)
         ? prev.products.filter((id) => id !== productId)
-        : [...prev.products, productId],
-    }));
-  };
+        : [...prev.products, productId]
+    }))
+  }
 
   return (
     <div>
-      <Button variant="contained" color="primary" onClick={handleDialogOpen}>
+      <Button variant="contained" color="primary" onClick={() => handleDialogOpen()}>
         Create New Promotion
       </Button>
 
-      <TableContainer component={Paper} style={{ marginTop: '20px' }}>
+      <TableContainer component={Paper} sx={{ mt: 3 }}>
         <Table>
           <TableHead>
             <TableRow>
@@ -100,18 +137,22 @@ const MarketingPromotions = () => {
                 <TableCell>{promotion.startDate}</TableCell>
                 <TableCell>{promotion.endDate}</TableCell>
                 <TableCell>
-                  <span
-                    style={{
-                      color: promotion.active ? 'green' : 'red',
-                      fontWeight: 'bold',
-                    }}
-                  >
+                  <span style={{
+                    color: promotion.active ? 'green' : 'red',
+                    fontWeight: 'bold'
+                  }}>
                     {promotion.active ? 'Active' : 'Inactive'}
                   </span>
                 </TableCell>
                 <TableCell>
                   <Button onClick={() => handleToggleActive(promotion.id)}>
                     Toggle Active
+                  </Button>
+                  <Button onClick={() => handleDialogOpen(promotion)}>
+                    Edit
+                  </Button>
+                  <Button color="error" onClick={() => handleDeletePromotion(promotion.id)}>
+                    Delete
                   </Button>
                 </TableCell>
               </TableRow>
@@ -120,9 +161,9 @@ const MarketingPromotions = () => {
         </Table>
       </TableContainer>
 
-      {/* Dialog for Creating New Promotion */}
+      {/* Dialog for Creating/Editing Promotion */}
       <Dialog open={openDialog} onClose={handleDialogClose}>
-        <DialogTitle>Create New Promotion</DialogTitle>
+        <DialogTitle>{editingPromotionId ? 'Edit Promotion' : 'Create New Promotion'}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2}>
             <Grid item xs={12}>
@@ -134,7 +175,7 @@ const MarketingPromotions = () => {
                 onChange={handleInputChange}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={6}>
               <TextField
                 label="Discount (%)"
                 name="discount"
@@ -144,7 +185,7 @@ const MarketingPromotions = () => {
                 onChange={handleInputChange}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={6}>
               <TextField
                 label="Start Date"
                 name="startDate"
@@ -152,12 +193,10 @@ const MarketingPromotions = () => {
                 fullWidth
                 value={newPromotion.startDate}
                 onChange={handleInputChange}
-                InputLabelProps={{
-                  shrink: true,
-                }}
+                InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={6}>
               <TextField
                 label="End Date"
                 name="endDate"
@@ -165,15 +204,12 @@ const MarketingPromotions = () => {
                 fullWidth
                 value={newPromotion.endDate}
                 onChange={handleInputChange}
-                InputLabelProps={{
-                  shrink: true,
-                }}
+                InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid item xs={6}>
               <label>Active</label>
               <Switch
-                name="active"
                 checked={newPromotion.active}
                 onChange={() =>
                   setNewPromotion((prev) => ({ ...prev, active: !prev.active }))
@@ -181,37 +217,30 @@ const MarketingPromotions = () => {
               />
             </Grid>
             <Grid item xs={12}>
-              <div>
-                <h4>Select Products</h4>
-                {products.map((product) => (
-                  <div key={product.id}>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={newPromotion.products.includes(product.id)}
-                        onChange={() => handleProductSelection(product.id)}
-                      />
-                      {product.name}
-                    </label>
-                  </div>
-                ))}
-              </div>
+              <h4>Select Products</h4>
+              {products.map((product) => (
+                <div key={product.id}>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={newPromotion.products.includes(product.id)}
+                      onChange={() => handleProductSelection(product.id)}
+                    />
+                    {product?.title}
+                  </label>
+                </div>
+              ))}
             </Grid>
             <Grid item xs={12}>
-              <Button
-                variant="contained"
-                color="primary"
-                fullWidth
-                onClick={handleSavePromotion}
-              >
-                Save Promotion
+              <Button variant="contained" fullWidth onClick={handleSavePromotion}>
+                {editingPromotionId ? 'Update Promotion' : 'Save Promotion'}
               </Button>
             </Grid>
           </Grid>
         </DialogContent>
       </Dialog>
     </div>
-  );
-};
+  )
+}
 
-export default MarketingPromotions;
+export default MarketingPromotions

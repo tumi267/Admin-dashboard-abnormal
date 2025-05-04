@@ -5,8 +5,10 @@ import {
   Table, TableHead, TableRow, TableCell, TableBody,
   Paper, Select, MenuItem, InputLabel, FormControl, Button
 } from '@mui/material';
-import dynamic from 'next/dynamic';
-
+import { fetchOrders } from '../../../../lib/db/orders'
+import { fetchCustomers } from '../../../../lib/db/customer'
+import { fetchProducts } from '../../../../lib/db/product'
+import { getPromotions } from '../../../../lib/db/marketing'
 // Type definitions
 interface SalesOverview {
   totalSales: number;
@@ -53,13 +55,26 @@ interface AnalyticsData {
   promotions: Promotion[];
   salesTrend: SalesTrend[];
 }
+type Item = {
+  id: string;
+  name: string;
+  quantity: number;
+  price: number;
+};
 
+type Order = {
+  id: string;
+  totalAmount: number;
+  items: Item[];
+};
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip,
     PieChart, Pie, Cell, ResponsiveContainer
   } from 'recharts';
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042'];
+
+
 
 const dataByRange: Record<string, AnalyticsData> = {
   '7days': {
@@ -201,6 +216,56 @@ const defaultData: AnalyticsData = {
 const AnalyticsReports = (): React.JSX.Element => {
   const [timeRange, setTimeRange] = useState<string>('30days');
   const [isMounted, setIsMounted] = useState<boolean>(false);
+  const [orders,setOrders]=useState([])
+  const [topItems, setTopItems] = useState([]);
+  useEffect(() => {
+    if (orders.length === 0) {
+      setTopItems([]);
+      return;
+    }
+  
+    const performanceMap = new Map<string, {
+      id: string;
+      name: string;
+      totalQuantity: number;
+      totalRevenue: number;
+    }>();
+  
+    for (const order of orders) {
+      for (const item of order.items) {
+        const key = `${item.id}-${item.name}`;
+        const existing = performanceMap.get(key);
+  
+        if (existing) {
+          existing.totalQuantity += item.quantity;
+          existing.totalRevenue += item.quantity * item.price;
+        } else {
+          performanceMap.set(key, {
+            id: item.id,
+            name: item.name,
+            totalQuantity: item.quantity,
+            totalRevenue: item.quantity * item.price
+          });
+        }
+      }
+    }
+  
+    const sorted = Array.from(performanceMap.values())
+      .sort((a, b) => b.totalRevenue - a.totalRevenue)
+      .slice(0, 5);
+  
+    setTopItems(sorted);
+  }, [orders]);
+  
+
+  useEffect(()=>{
+    const load = async () => {
+      const res = await fetchOrders()
+     
+      setOrders(res)
+    }
+    load()
+  },[])
 
   useEffect(() => {
     setIsMounted(true);
@@ -245,6 +310,7 @@ const AnalyticsReports = (): React.JSX.Element => {
     return <div style={{ padding: 20 }}>Loading...</div>;
   }
 
+
   return (
     <div style={{ padding: 20 }}>
       <Typography variant="h5" gutterBottom>Analytics Reports</Typography>
@@ -274,9 +340,9 @@ const AnalyticsReports = (): React.JSX.Element => {
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>Total Sales</Typography>
-              <Typography variant="h4">{formatCurrency(salesOverview.totalSales)}</Typography>
+              <Typography variant="h4">{formatCurrency(orders.reduce((acc, obj) => acc + obj.totalAmount, 0))}</Typography>
               <Typography variant="body2" color="text.secondary">
-                {formatNumber(salesOverview.orders)} orders
+                {formatNumber(orders.length)} orders
               </Typography>
             </CardContent>
           </Card>
@@ -286,9 +352,9 @@ const AnalyticsReports = (): React.JSX.Element => {
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>Total Orders</Typography>
-              <Typography variant="h4">{formatNumber(salesOverview.orders)}</Typography>
+              <Typography variant="h4">{formatNumber(orders.length)}</Typography>
               <Typography variant="body2" color="text.secondary">
-                {formatCurrency(salesOverview.avgOrderValue)} avg. order
+                {/* {formatCurrency(salesOverview.avgOrderValue)} avg. order */}
               </Typography>
             </CardContent>
           </Card>
@@ -298,9 +364,9 @@ const AnalyticsReports = (): React.JSX.Element => {
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>Avg. Order Value</Typography>
-              <Typography variant="h4">{formatCurrency(salesOverview.avgOrderValue)}</Typography>
+              <Typography variant="h4">{formatCurrency(orders.reduce((acc, obj) => acc + obj.totalAmount, 0)/orders.length)}</Typography>
               <Typography variant="body2" color="text.secondary">
-                {Math.round(salesOverview.totalSales / salesOverview.avgOrderValue)} estimated customers
+                {Math.round(orders.length / orders.reduce((acc, obj) => acc + obj.totalAmount, 0)/orders.length)} estimated customers
               </Typography>
             </CardContent>
           </Card>
@@ -315,7 +381,7 @@ const AnalyticsReports = (): React.JSX.Element => {
                 <BarChart
                   width={500}
                   height={300}
-                  data={topProducts}
+                  data={topItems}
                   margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                 >
                   <XAxis dataKey="name" />
@@ -324,7 +390,7 @@ const AnalyticsReports = (): React.JSX.Element => {
                     formatter={(value) => formatCurrency(Number(value))}
                     labelFormatter={(label) => `Product: ${label}`}
                   />
-                  <Bar dataKey="sales" fill="#8884d8" name="Sales" />
+                  <Bar dataKey="totalRevenue" fill="#8884d8" name="Sales" />
                 </BarChart>
               </div>
             </CardContent>
@@ -338,8 +404,8 @@ const AnalyticsReports = (): React.JSX.Element => {
               <div style={{ height: 300 }}>
                 <PieChart width={500} height={300}>
                   <Pie
-                    data={topProducts}
-                    dataKey="sales"
+                    data={topItems}
+                    dataKey="totalRevenue"
                     nameKey="name"
                     cx="50%"
                     cy="50%"
