@@ -3,14 +3,18 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from knox.models import AuthToken
 from .serializers import RegistrationSerializer, LoginSerializer
-from django.contrib.auth import login
+from django.contrib.auth import login, get_user_model
 from knox.views import LoginView as KnoxLoginView
 from django.core.mail import send_mail
 from django.conf import settings    
-
 from django_rest_passwordreset.views import ResetPasswordValidateToken, ResetPasswordConfirm
-from .serializers import PasswordResetConfirmSerializer
+from django_rest_passwordreset.models import ResetPasswordToken
+from .serializers import PasswordResetConfirmSerializer, PasswordResetSerializer
+from django.utils.crypto import get_random_string
+from .serializers import EmailChangeRequestSerializer, EmailChangeConfirmSerializer, ProductSerializer, ProductUpdateSerializer
+from .models import Product
 
+User = get_user_model()
 class RegistrationAPI(generics.GenericAPIView):
     serializer_class = RegistrationSerializer
     permission_classes = (permissions.AllowAny,)
@@ -44,10 +48,17 @@ class PasswordResetRequest(generics.GenericAPIView):
     def post(self, request):
         serializer = PasswordResetSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = User.objects.get(email=serializer.validated_data['email'])
         
-        # Generate and send password reset email
-        token = django_rest_passwordreset.models.ResetPasswordToken.objects.create(
+        try:
+            user = User.objects.get(email=serializer.validated_data['email'])
+        except User.DoesNotExist:
+            return Response({'detail': 'User with this email does not exist'}, status=400)
+
+        # Delete old tokens if they exist
+        ResetPasswordToken.objects.filter(user=user).delete()
+        
+        # Create new token
+        token = ResetPasswordToken.objects.create(
             user=user,
         )
         
@@ -63,3 +74,68 @@ class PasswordResetRequest(generics.GenericAPIView):
 
 class PasswordResetConfirmView(ResetPasswordConfirm):
     serializer_class = PasswordResetConfirmSerializer
+
+
+class EmailChangeRequestView(generics.GenericAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    
+    def post(self, request):
+        serializer = EmailChangeRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        request.user.new_email = serializer.validated_data['new_email']
+        verification_token = get_random_string(50)
+        request.user.save()
+        
+        # Send verification email
+        send_mail(
+            'Confirm Email Change',
+            f'Click to confirm email change: http://localhost:8000/auth/email/confirm/{verification_token}/',
+            settings.DEFAULT_FROM_EMAIL,
+            [request.user.new_email],
+        )
+        return Response({'status': 'verification email sent'})
+
+class EmailChangeConfirmView(generics.GenericAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    
+    def post(self, request, token):
+        # In real implementation, store and validate token properly
+        if request.user.verification_token == token:  # You'll need to implement token storage
+            request.user.email = request.user.new_email
+            request.user.new_email = None
+            request.user.email_verified = True
+            request.user.save()
+            return Response({'status': 'email updated'})
+        return Response({'error': 'invalid token'}, status=400)
+    
+
+
+class ProductListCreateView(generics.ListCreateAPIView):
+    serializer_class = ProductSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return Product.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return Product.objects.filter(user=self.request.user)
+    
+    def get_serializer_class(self):
+        if self.request.method in ['PUT', 'PATCH']:
+            return ProductUpdateSerializer
+        return ProductSerializer
+    
+    def delete(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(
+            {"detail": "Product deleted successfully."},
+            status=status.HTTP_200_OK
+        )

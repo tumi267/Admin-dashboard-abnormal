@@ -2,10 +2,12 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
-from .models import User
-from django.contrib.auth import authenticate
+from .models import User, Product
+from django.contrib.auth import authenticate, get_user_model
 from django_rest_passwordreset.serializers import PasswordTokenSerializer
+from django_rest_passwordreset.models import ResetPasswordToken
 
+User = get_user_model()
 
 class RegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True)
@@ -75,3 +77,40 @@ class PasswordResetConfirmSerializer(PasswordTokenSerializer):
     def validate_new_password(self, value):
         validate_password(value)
         return value
+    
+
+class EmailChangeRequestSerializer(serializers.Serializer):
+    new_email = serializers.EmailField()
+    
+    def validate_new_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Email is already registered.")
+        return value
+
+class EmailChangeConfirmSerializer(serializers.Serializer):
+    token = serializers.CharField()
+
+
+class ProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ['id', 'image', 'name', 'description', 'price', 'created_at', 'updated_at']
+        read_only_fields = ['user', 'created_at', 'updated_at']
+
+    def validate_name(self, value):
+        if Product.objects.filter(name__iexact=value).exists():
+            raise serializers.ValidationError("Product name already exists.")
+        return value
+
+    def validate_image(self, value):
+        
+        return value  # Validation handled at model level
+
+class ProductUpdateSerializer(ProductSerializer):
+    class Meta(ProductSerializer.Meta):
+        extra_kwargs = {
+            'name': {'required': False},
+            'description': {'required': False},
+            'price': {'required': False},
+            'image': {'required': False}
+        }
